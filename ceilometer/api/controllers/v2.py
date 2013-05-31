@@ -364,17 +364,20 @@ class MeterController(rest.RestController):
         pecan.request.context['meter_id'] = meter_id
         self._id = meter_id
 
-    @wsme_pecan.wsexpose([Sample], [Query])
-    def get_all(self, q=[]):
+    @wsme_pecan.wsexpose([Sample], [Query], int)
+    def get_all(self, q=[], limit=None):
         """Return samples for the meter.
 
         :param q: Filter rules for the data to be returned.
+        :param limit: Maximum number of samples to return.
         """
+        if limit and limit < 0:
+            raise ValueError("Limit must be positive")
         kwargs = _query_to_kwargs(q, storage.EventFilter.__init__)
         kwargs['meter'] = self._id
         f = storage.EventFilter(**kwargs)
         return [Sample(**e)
-                for e in pecan.request.storage_conn.get_samples(f)
+                for e in pecan.request.storage_conn.get_samples(f, limit=limit)
                 ]
 
     @wsme_pecan.wsexpose([Statistics], [Query], int)
