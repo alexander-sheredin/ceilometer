@@ -322,13 +322,21 @@ class Connection(base.Connection):
                 m['unit'] = meter.counter_unit
                 yield m
 
-    def get_samples(self, event_filter):
+    def get_samples(self, event_filter, limit=None):
         """Return an iterable of samples as created by
         :func:`ceilometer.meter.meter_message_from_counter`.
+
+        :param sample_filter: Filter.
+        :param limit: Maximum number of results to return.
         """
+        if limit == 0:
+            return
+
         query = model_query(Meter, session=self.session)
         query = make_query_from_filter(query, event_filter,
                                        require_meter=False)
+        if limit:
+            query = query.limit(limit)
         samples = query.all()
 
         for s in samples:

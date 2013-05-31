@@ -140,9 +140,12 @@ class Connection(object):
         """
 
     @abc.abstractmethod
-    def get_samples(self, event_filter):
+    def get_samples(self, event_filter, limit=None):
         """Return an iterable of samples as created by
         :func:`ceilometer.meter.meter_message_from_counter`.
+
+        :param event_filter: Filter.
+        :param limit: Maximum number of results to return.
         """
 
     @abc.abstractmethod
