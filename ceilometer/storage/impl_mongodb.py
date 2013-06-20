@@ -333,7 +333,7 @@ class Connection(base.Connection):
                       },
              '$addToSet': {'meter': {'counter_name': data['counter_name'],
                                      'counter_type': data['counter_type'],
-                                     'counter_unit': data['counter_unit'],
+                                     'counter_unit': data.get('counter_unit', ''),
                                      },
                            },
              },
