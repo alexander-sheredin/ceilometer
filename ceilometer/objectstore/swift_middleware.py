@@ -59,8 +59,6 @@ except ImportError:
     # Swift <= 1.7.5 ... module exists and has class.
     from swift.common.middleware.proxy_logging import InputProxy
 
-from swift.common.swob import Request
-
 from ceilometer import counter
 from ceilometer.openstack.common import context
 from ceilometer.openstack.common import timeutils
@@ -144,7 +142,7 @@ class CeilometerMiddleware(object):
                 self.pipeline_manager.pipelines,
         ) as publisher:
             if bytes_received:
-                if method == 'GET' and not req.query_string:
+                if method == 'PUT':
                     publisher([counter.Counter(
                         name='storage.objects.incoming.bytes',
                         type='delta',
@@ -157,7 +155,7 @@ class CeilometerMiddleware(object):
                         resource_metadata=resource_metadata)])
 
             if bytes_sent:
-                if method == 'PUT':
+                if method == 'GET' and not req.query_string:
                     publisher([counter.Counter(
                         name='storage.objects.outgoing.bytes',
                         type='delta',
