@@ -42,6 +42,8 @@ from stevedore import dispatch
 from swift.common.utils import split_path
 import webob
 
+from swift.common.swob import Request
+
 REQUEST = webob
 try:
     # Swift >= 1.7.5
@@ -56,6 +58,8 @@ try:
 except ImportError:
     # Swift <= 1.7.5 ... module exists and has class.
     from swift.common.middleware.proxy_logging import InputProxy
+
+from swift.common.swob import Request
 
 from ceilometer import counter
 from ceilometer.openstack.common import context
@@ -120,6 +124,7 @@ class CeilometerMiddleware(object):
         req = REQUEST.Request(env)
         version, account, container, obj = split_path(req.path, 1, 4, True)
         now = timeutils.utcnow().isoformat()
+        method = req.environ.get('swift.orig_req_method', req.method)
 
         resource_metadata = {
             "path": req.path,
@@ -139,28 +144,30 @@ class CeilometerMiddleware(object):
                 self.pipeline_manager.pipelines,
         ) as publisher:
             if bytes_received:
-                publisher([counter.Counter(
-                    name='storage.objects.incoming.bytes',
-                    type='delta',
-                    unit='B',
-                    volume=bytes_received,
-                    user_id=env.get('HTTP_X_USER_ID'),
-                    project_id=env.get('HTTP_X_TENANT_ID'),
-                    resource_id=account.partition('AUTH_')[2],
-                    timestamp=now,
-                    resource_metadata=resource_metadata)])
+                if method == 'GET' and not req.query_string:
+                    publisher([counter.Counter(
+                        name='storage.objects.incoming.bytes',
+                        type='delta',
+                        unit='B',
+                        volume=bytes_received,
+                        user_id=env.get('HTTP_X_USER_ID'),
+                        project_id=env.get('HTTP_X_TENANT_ID'),
+                        resource_id=account.partition('AUTH_')[2],
+                        timestamp=now,
+                        resource_metadata=resource_metadata)])
 
             if bytes_sent:
-                publisher([counter.Counter(
-                    name='storage.objects.outgoing.bytes',
-                    type='delta',
-                    unit='B',
-                    volume=bytes_sent,
-                    user_id=env.get('HTTP_X_USER_ID'),
-                    project_id=env.get('HTTP_X_TENANT_ID'),
-                    resource_id=account.partition('AUTH_')[2],
-                    timestamp=now,
-                    resource_metadata=resource_metadata)])
+                if method == 'PUT':
+                    publisher([counter.Counter(
+                        name='storage.objects.outgoing.bytes',
+                        type='delta',
+                        unit='B',
+                        volume=bytes_sent,
+                        user_id=env.get('HTTP_X_USER_ID'),
+                        project_id=env.get('HTTP_X_TENANT_ID'),
+                        resource_id=account.partition('AUTH_')[2],
+                        timestamp=now,
+                        resource_metadata=resource_metadata)])
 
 
 def filter_factory(global_conf, **local_conf):
